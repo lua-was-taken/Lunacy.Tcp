@@ -27,8 +27,39 @@ namespace Lunacy.Tcp.Connectivity.Clients {
 
 			token.ThrowIfCancellationRequested();
 
-			await _ConnectionSecureBarrier.WaitAsync(token);
-			return isConnected;
+			try {
+				using TimeoutTokenSource tokenSource = new();
+				tokenSource.AddToken(token);
+				tokenSource.AddToken(DisconnectToken);
+				tokenSource.AddTimeout(TimeSpan.FromSeconds(10));
+
+				Debug.WriteLine("Waiting for secure barrier release");
+				await _ConnectionSecureBarrier.WaitAsync(tokenSource.Build());
+				Debug.WriteLine("Secure connection built successfully");
+			} catch(Exception ex) when (ex is OperationCanceledException) {
+				if(!DisconnectToken.IsCancellationRequested && !token.IsCancellationRequested) {
+					DisconnectFast();
+					if(Config.DebugLog) {
+						Debug.WriteLine("Exceeded E2EE handshake timeout limit");
+					}
+					return false;
+				} else if(DisconnectToken.IsCancellationRequested) {
+					DisconnectFast();
+					if(Config.DebugLog) {
+						Debug.WriteLine("Remote end disconnected during E2EE handshake");
+					}
+					return false;
+				} else {
+					DisconnectFast();
+					isConnected = false;
+
+					if(token.IsCancellationRequested) { 
+						throw; 
+					}
+				}
+			}
+			
+			return _BaseSocket.IsConnected;
 		}
 
 		protected override void OnClientConnected(object? sender, EventArgs e) {
@@ -165,7 +196,7 @@ namespace Lunacy.Tcp.Connectivity.Clients {
 								break;
 
 							case EndToEndStateType.Encrypted:
-								
+
 								if(Config.DebugLog) {
 									Debug.WriteLine($"ENCRYPTED: Received internal packet post e2ee handshake, publishing {e.Id}");
 								}
@@ -183,16 +214,17 @@ namespace Lunacy.Tcp.Connectivity.Clients {
 				}
 
 				if(_EncryptionState == EndToEndStateType.Encrypted) {
-					
+
+					_ConnectionSecureBarrier.Unblock();
 					if(Config.DebugLog) {
 						Debug.WriteLine("ENCRYPTED: Unblocking barrier, handshake complete");
 					}
 
-					_ConnectionSecureBarrier.Unblock();
 					InvokeConnectedEvent(this, EventArgs.Empty);
 				}
 			} else {
-				
+
+				_ConnectionSecureBarrier.Unblock();
 				if(Config.DebugLog) {
 					Debug.WriteLine($"ENCRYPTED: Decrypting payload {e.Id}");
 				}

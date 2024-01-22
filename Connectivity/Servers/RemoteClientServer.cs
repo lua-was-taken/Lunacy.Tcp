@@ -15,7 +15,7 @@ namespace Lunacy.Tcp.Connectivity.Servers {
 
 		public Func<IServer, Socket, T> ClientFactoryMethod { get; protected init; } = clientFactoryMethod;
 
-		public Socket Socket { get; set; } = new(SocketType.Stream, ProtocolType.IPv4 | ProtocolType.Tcp);
+		public Socket Socket { get; set; } = SocketFactory.CreateTcpSocket();
 		public bool IsOpen { get; private set; } = false;
 
 		protected CancellationTokenSource? _ListeningTokenSource = null;
@@ -38,8 +38,9 @@ namespace Lunacy.Tcp.Connectivity.Servers {
 				throw new InvalidOperationException("Server is already opened");
 			}
 
-			IPEndPoint localEndPoint = new(IPAddress.Loopback, port);
+			IPEndPoint localEndPoint = EndPointFactory.CreateLocalEndPoint(port);
 			Socket.Bind(localEndPoint);
+			Socket.Listen();
 
 			_ListeningTokenSource = new();
 			Task.Run(SocketAcceptClientsAsync);
@@ -69,8 +70,6 @@ namespace Lunacy.Tcp.Connectivity.Servers {
 			ListeningToken.ThrowIfCancellationRequested();
 
 			try {
-
-				Socket.Listen();
 				while(true) {
 					Socket clientSocket = await Socket.AcceptAsync(ListeningToken);
 					T client = ClientFactoryMethod(this, clientSocket);

@@ -12,7 +12,7 @@ namespace Lunacy.Tcp.Connectivity {
 		}
 
 		public static Socket CreateTcpSocket() {
-			return new Socket(SocketType.Stream, ProtocolType.IPv4 | ProtocolType.Tcp);
+			return new Socket(SocketType.Stream, ProtocolType.Tcp );
 		}
 	}
 }

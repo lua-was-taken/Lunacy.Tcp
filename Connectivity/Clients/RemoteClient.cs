@@ -198,22 +198,14 @@ namespace Lunacy.Tcp.Connectivity.Clients {
 			if(!string.IsNullOrWhiteSpace(SessionId)) {
 				return SessionId;
 			}
-			
-			ObjectDisposedException.ThrowIf(_IsDisposing || _IsDisposed, this);
-			if(!IsConnected) {
-				throw new NotConnectedException();
-			}
-
-			if(!string.IsNullOrWhiteSpace(SessionId)) {
-				return SessionId;
-			}
 
 			using CancellationTokenSource linkedTokenSoruce = CancellationTokenSource.CreateLinkedTokenSource(token, DisconnectToken);
 			token = linkedTokenSoruce.Token;
-
 			token.ThrowIfCancellationRequested();
 
-			await _SessionIdResolvedBarrier.WaitAsync(token);
+			try {
+				await _SessionIdResolvedBarrier.WaitAsync(token);
+			} catch(ObjectDisposedException) { }
 
 			return SessionId;
 		}
@@ -221,6 +213,10 @@ namespace Lunacy.Tcp.Connectivity.Clients {
 		public async Task<bool> DisconnectAsync() {
 			if(!IsConnected) {
 				return GracefulDisconnect;
+			}
+
+			if(Config.DebugLog) {
+				Debug.WriteLine("Disconnecting asynchronously");
 			}
 
 			try {

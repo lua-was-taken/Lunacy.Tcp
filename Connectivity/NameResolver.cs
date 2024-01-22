@@ -25,7 +25,19 @@ namespace Lunacy.Tcp.Connectivity {
 				case UriHostNameType.Dns:
 					IPHostEntry hostEntry = Dns.GetHostEntry(hostname);
 					if(hostEntry.AddressList.Length > 0) {
-						IPAddress address = hostEntry.AddressList[0];
+						IPAddress? address = null;
+						foreach(IPAddress _address in hostEntry.AddressList) {
+							if(Uri.CheckHostName(_address.ToString()) == UriHostNameType.IPv4) {
+								address = _address; 
+								break;
+							}
+						}
+
+						address ??= hostEntry.AddressList.FirstOrDefault();
+						if(address == null) {
+							throw new UnresolvedHostException(hostname);
+						}
+
 						if(address.ToString() == "::1") {
 							address = IPAddress.Parse("127.0.0.1");
 						} else {

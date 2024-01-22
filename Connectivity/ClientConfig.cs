@@ -12,9 +12,10 @@ namespace Lunacy.Tcp.Connectivity {
 		/// </summary>
 		public int MaxInternalBufferSize = 5_242_880; // 5Mb
 
-		public TimeSpan GracefulDisconnectTimeout = TimeSpan.FromSeconds(5);
+		public TimeSpan GracefulDisconnectTimeout = TimeSpan.FromSeconds(10);
 		public TimeSpan DeletePacketsOlderThan = TimeSpan.FromSeconds(30);
 		public TimeSpan ConfirmationTimeout = TimeSpan.FromSeconds(10);
+		public TimeSpan EndToEndTimeout = TimeSpan.FromSeconds(10);
 
 		public PacketOrderType PacketOrderType = PacketOrderType.Sequential;
 
